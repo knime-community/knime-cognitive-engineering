@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+.pixi/
+pixi.lock
+dist/
+dev/config.yml
+*.egg-info/
+.pytest_cache/

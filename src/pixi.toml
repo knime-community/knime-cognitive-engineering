@@ -1,0 +1,22 @@
+[workspace]
+channels = ["knime", "conda-forge"]
+name = "cognitive-engineering-knime"
+platforms = ["win-64", "linux-64", "osx-64", "osx-arm64"]
+version = "0.1.0"
+
+[dependencies]
+python = "3.11.*"
+knime-extension = ">=5.11,<5.12"
+knime-python-base = ">=5.11,<5.12"
+pandas = "*"
+
+[pypi-dependencies]
+euleris = ">=0.1.0"
+graphcoherence = ">=0.1.0"
+
+[feature.build.dependencies]
+python = "3.11.*"
+knime-extension-bundling = ">=5.11,<5.12"
+
+[environments]
+build = { features = ["build"], no-default-feature = true }

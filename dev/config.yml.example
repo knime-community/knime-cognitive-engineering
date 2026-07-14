@@ -1,0 +1,16 @@
+# KNIME development extension registration.
+# Copy to config.yml, fix the two ABSOLUTE paths (forward slashes on Windows),
+# then point knime.ini at it:
+#     -Dknime.python.extension.config=C:/dev/topostability/packages/knime-nodes/dev/config.yml
+#
+# The top-level key MUST equal the extension id = <group_id>.<name> from
+# src/knime.yml  ->  dev.cognitive_engineering.cognitive_engineering
+#
+# src               = the directory containing src/knime.yml (i.e. .../knime-nodes/src)
+# conda_env_path    = output of `conda env list` for cognitive-engineering-knime
+# debug_mode: true  = reload configure()/execute() without restarting KNIME
+
+dev.cognitive_engineering.cognitive_engineering:
+  src: C:/dev/topostability/packages/knime-nodes/src
+  conda_env_path: C:/Users/41763/miniforge3/envs/cognitive-engineering-knime
+  debug_mode: true
