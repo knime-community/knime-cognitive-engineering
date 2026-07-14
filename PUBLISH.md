@@ -1,7 +1,7 @@
 # Publishing to the KNIME Community Hub
 
 How to distribute the Cognitive Engineering nodes (Euleris + GraphCoherence)
-beyond local dev. Two paths — start with A, aim for B.
+beyond local dev. Two paths - start with A, aim for B.
 
 > Distribution model, in one line: KNIME **Python extensions are installed from an
 > "update site"** (a generated repository folder/zip), *not* uploaded like a
@@ -35,7 +35,7 @@ knime-extension = "{version_ap}"
 knime-python-base = "{version_ap}"
 pandas = "*"
 
-# euleris / graphcoherence are PyPI-only — add via pixi's pypi-dependencies:
+# euleris / graphcoherence are PyPI-only - add via pixi's pypi-dependencies:
 [pypi-dependencies]
 euleris = ">=0.1.0"
 graphcoherence = ">=0.1.0"
@@ -49,7 +49,7 @@ build = { features = ["build"], no-default-feature = true }
 ```
 
 (If you prefer the older conda flow, use `env_yml_path: ./env.yml` instead of
-`pixi_toml_path` and run the bundler against a conda env — see the bundling guide.)
+`pixi_toml_path` and run the bundler against a conda env - see the bundling guide.)
 
 ---
 
@@ -71,7 +71,7 @@ https://docs.knime.com/latest/pure_python_node_extensions_guide/#_bundling
 
 ---
 
-## Option A — Self-distributed update site (fastest, no KNIME review)
+## Option A - Self-distributed update site (fastest, no KNIME review)
 
 Best for v0.1 and internal/early users.
 
@@ -84,7 +84,7 @@ Best for v0.1 and internal/early users.
      Install, restart.
 4. (Optional) Create a KNIME Hub account at https://hub.knime.com
    (suggested user: `cognitive-engineering` or `dmartinv`) to host the zip and a
-   demo **workflow** showcasing the nodes — workflows *are* uploaded directly to
+   demo **workflow** showcasing the nodes - workflows *are* uploaded directly to
    the Hub and are a good discovery surface pointing back to the extension.
 
 **Pros:** ship today, full control. **Cons:** users must manually add the site;
@@ -92,7 +92,7 @@ not discoverable in KNIME's built-in extension list.
 
 ---
 
-## Option B — KNIME Community Extensions program (wide distribution, the goal)
+## Option B - KNIME Community Extensions program (wide distribution, the goal)
 
 Gets the extension into KNIME's **Community Extensions update site** so anyone can
 install it from KNIME's built-in dialog without adding a custom site.

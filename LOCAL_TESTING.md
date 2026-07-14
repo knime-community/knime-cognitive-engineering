@@ -3,7 +3,7 @@
 Step-by-step to load and smoke-test the Euleris + GraphCoherence Python nodes
 in KNIME 5.12.0 LTS before publishing to the Community Hub.
 
-> **Read first — two things that will block you:**
+> **Read first - two things that will block you:**
 >
 > 1. **One extension, one manifest.** KNIME's pure-Python loader requires **one
 >    extension per `knime.yml` with a single `extension_module`**. This repo ships
@@ -14,7 +14,7 @@ in KNIME 5.12.0 LTS before publishing to the Community Hub.
 >    but `execute()` calls `https://api.cognitive-engineering.dev`. Until that
 >    endpoint is deployed **and** you have a real `ek_`/`gc_` key, execution will
 >    fail with a connection error. You can still verify the extension **loads,
->    the nodes appear, and dialogs configure correctly** — see the offline note
+>    the nodes appear, and dialogs configure correctly** - see the offline note
 >    in step 3.
 
 ---
@@ -23,12 +23,12 @@ in KNIME 5.12.0 LTS before publishing to the Community Hub.
 
 - **KNIME 5.12.0 LTS** installed (you have this).
 - **Conda** (Miniforge recommended). `knime-python-base` / `knime-extension` are
-  only on the `knime` conda channel — they are **not** pip-installable, so a
+  only on the `knime` conda channel - they are **not** pip-installable, so a
   plain venv will not work. If you don't have conda:
   - Download Miniforge: https://github.com/conda-forge/miniforge (Windows x86-64),
     install to e.g. `C:\Users\41763\miniforge3`.
   - Your system Python 3.13 at `C:\Users\41763\AppData\Local\Programs\Python\Python313\`
-    is **not** used here — the conda env brings its own Python 3.11.
+    is **not** used here - the conda env brings its own Python 3.11.
 
 Open **"Miniforge Prompt"** (Start menu) for all conda commands below.
 
@@ -84,7 +84,7 @@ dev.cognitive_engineering.cognitive_engineering:
 
 - The top key **must** equal the extension id = `group_id.name` from
   `src/knime.yml` → `dev.cognitive_engineering.cognitive_engineering`.
-- `src` points at the folder containing `src/knime.yml` (i.e. `.../knime-nodes/src`).
+- `src` points at the folder containing `src/knime.yml` (i.e. this repo's `src/`).
 - `conda_env_path` is the path from `conda env list`.
 
 ### 2b. Edit `knime.ini`
@@ -112,7 +112,7 @@ registers the nodes.
 ## 3. Confirm the extension registered
 
 - In the **Node Repository** panel (bottom-left; if hidden: *View → Node
-  Repository*), the three nodes appear under **Uncategorized** — dev-loaded
+  Repository*), the three nodes appear under **Uncategorized** - dev-loaded
   Python extensions can't create categories in KNIME 5.x (they get their proper
   categories only once published). Search "Euleris" / "GraphCoherence":
   - *Euleris Spectrum*, *Euleris Batch*
@@ -122,11 +122,11 @@ registers the nodes.
 **Offline check (no API needed):** drag a node onto the canvas and double-click
 it. The configuration dialog should open with the **SMILES column / Source /
 Target** dropdowns and the **API Key** field. If the dialog opens and columns
-populate from an upstream table, `configure()` works — that alone proves the
+populate from an upstream table, `configure()` works - that alone proves the
 extension loaded correctly, even before the API is deployed.
 
 `debug_mode: true` means you can edit `src/**/_logic.py` or `nodes.py` and just
-re-execute the node — no KNIME restart needed (a restart is only needed for
+re-execute the node - no KNIME restart needed (a restart is only needed for
 `knime.yml`/new-node changes).
 
 ---
@@ -139,7 +139,7 @@ re-execute the node — no KNIME restart needed (a restart is only needed for
 
 Create a new workflow: *File → New… → New KNIME Workflow*.
 
-### Branch A — Euleris
+### Branch A - Euleris
 
 1. Drag **Table Creator** (Node Repository → *IO → Other*) onto the canvas.
    Double-click → add one **string** column named `smiles` with three rows:
@@ -164,10 +164,10 @@ Create a new workflow: *File → New… → New KNIME Workflow*.
 | `c1ccccc1` (benzene) | higher | **N6 = 1**, rest 0 | 1 | populated |
 | `c1cn[nH]n1` (1,2,4-triazole) | ~35 | **N5 = 1**, rest 0 | 1 | populated |
 
-An invalid SMILES would **not** crash the node — its `euleris_*` cells come back
+An invalid SMILES would **not** crash the node - its `euleris_*` cells come back
 missing (red "?") and a warning appears in the KNIME console.
 
-### Branch B — GraphCoherence
+### Branch B - GraphCoherence
 
 1. Drag a second **Table Creator**. Add two **int** columns `source`, `target`
    with rows:
@@ -185,19 +185,19 @@ missing (red "?") and a warning appears in the KNIME console.
    - **C parameter**: `0.0`
 4. Execute. It has **two output ports**:
 
-**Port 1 — Edge table** (one row per edge):
+**Port 1 - Edge table** (one row per edge):
 
 | source | target | edge_key | gc_tri_count | gc_state | gc_ricci | gc_ccrit |
 |---|---|---|---|---|---|---|
 | 0 | 1 | 0--1 | 1 | pre | … | 0.8 |
 | 1 | 2 | 1--2 | 1 | pre | … | 0.8 |
 | 2 | 0 | 0--2 | 1 | pre | … | 0.8 |
-| 2 | 3 | 2--3 | 0 | **always_fragile** | … | *(missing — ∞)* |
+| 2 | 3 | 2--3 | 0 | **always_fragile** | … | *(missing - ∞)* |
 
 (The 0-1-2 triangle gives those three edges `tri=1`; edge 2-3 is a bridge with
 `tri=0`. At `C=0.0` the triangle edges are below their `ccrit=0.8`, so `pre`.)
 
-**Port 2 — Network summary** (single row):
+**Port 2 - Network summary** (single row):
 
 | gc_fi | gc_nodes | gc_edges | gc_triangles | gc_mean_ricci | gc_regime |
 |---|---|---|---|---|---|
@@ -212,7 +212,7 @@ missing (red "?") and a warning appears in the KNIME console.
   uses **forward slashes**, and is **below** `-vmargs`. One arg per line.
 - The `config.yml` top key must exactly match `dev.cognitive_engineering.cognitive_engineering`.
 - `src` must point at the folder that contains `knime.yml`
-  (`…/knime-nodes/src`), not the repo root.
+  (this repo's `src/`), not the repo root.
 - Look at the KNIME **log**: *View → Open KNIME log*, or
   `C:\Users\41763\knime-workspace\.metadata\knime\knime.log`. Search for
   `cognitive_engineering`, `extension`, `ModuleNotFoundError`, `Traceback`.
@@ -225,18 +225,18 @@ missing (red "?") and a warning appears in the KNIME console.
 - Those live in the conda env's pip section. Re-run:
   `conda activate cognitive-engineering-knime && pip install euleris graphcoherence pandas`.
 
-**Icons look tiny / blank** — expected: they are 16×16. KNIME's guide recommends
+**Icons look tiny / blank** - expected: they are 16×16. KNIME's guide recommends
 48×48; regenerate larger before publishing if desired.
 
-**Execute fails with a connection/timeout error** — the API endpoint
+**Execute fails with a connection/timeout error** - the API endpoint
 (`api.cognitive-engineering.dev`) is not deployed yet, or the node has no valid
 key. This is expected pre-deploy; the load/configure check in step 3 is the
 offline-valid test.
 
-**HTTP 429 in the node** — daily quota hit; the node surfaces a clear error with
+**HTTP 429 in the node** - daily quota hit; the node surfaces a clear error with
 the upgrade link (`https://cognitive-engineering.dev/pricing`).
 
-**Check the Python console for errors** — right-click a failing node →
+**Check the Python console for errors** - right-click a failing node →
 *Configure* has no console, but execution errors show in the node's yellow/red
 status tooltip and in the KNIME log (above). For deeper Python debugging set
 `debug_mode: true` (already set) and watch the log while executing.
