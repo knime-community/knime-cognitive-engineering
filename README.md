@@ -1,4 +1,10 @@
-# Cognitive Engineering — KNIME Nodes
+# Cognitive Engineering - KNIME Nodes
+
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+![KNIME](https://img.shields.io/badge/KNIME-5.12%2B-yellow)
+![Python](https://img.shields.io/badge/python-3.11-blue)
+[![PyPI - euleris](https://img.shields.io/pypi/v/euleris?label=euleris)](https://pypi.org/project/euleris/)
+[![PyPI - graphcoherence](https://img.shields.io/pypi/v/graphcoherence?label=graphcoherence)](https://pypi.org/project/graphcoherence/)
 
 Pure-Python KNIME 5.x node extensions that bring **Euleris** (topological
 molecular analysis) and **GraphCoherence** (structural network analysis) into
@@ -8,35 +14,35 @@ KNIME workflows. The nodes are thin clients over the live PyPI packages
 happens **server-side** via the Cognitive Engineering API. The nodes only send
 your table data and append the returned columns.
 
-This repository contains **only the KNIME node code** — HTTP client wrappers over
+This repository contains **only the KNIME node code** - HTTP client wrappers over
 the public API. There is no proprietary or server-side code here.
 
 ## Nodes
 
 ### Euleris
 
-- **Euleris Spectrum** — for each molecule in a SMILES column, appends the cycle
+- **Euleris Spectrum** - for each molecule in a SMILES column, appends the cycle
   spectrum `euleris_N3`…`euleris_N10`, the topological complexity `euleris_score`,
   the total cycle count `euleris_cycles`, ADME predictions `euleris_logP`,
   `euleris_esol`, `euleris_bbbp`, and toxicity `euleris_tox_score`,
   `euleris_tox_risk`, `euleris_tox_AhR`, `euleris_tox_ER_LBD`, `euleris_tox_MMP`.
-  Invalid SMILES do not stop the run — the offending row's new columns are left
+  Invalid SMILES do not stop the run - the offending row's new columns are left
   empty (missing) and a warning is logged.
-- **Euleris Batch** — high-throughput variant that sends molecules to the batch
-  endpoint in configurable chunks (**Batch Size**, 1–1000) and appends the
+- **Euleris Batch** - high-throughput variant that sends molecules to the batch
+  endpoint in configurable chunks (**Batch Size**, 1-1000) and appends the
   spectrum, `euleris_score`, and toxicity summary columns. Results are aligned
   back to the input rows by SMILES; molecules the API rejects are left empty.
 
 ### GraphCoherence
 
-- **GraphCoherence Analyzer** — takes an edge list (a **Source** and a
+- **GraphCoherence Analyzer** - takes an edge list (a **Source** and a
   **Target** column, integer or string) and produces **two** output tables:
-  - *Edge table*: one row per edge — `source`, `target`, `edge_key`,
+  - *Edge table*: one row per edge - `source`, `target`, `edge_key`,
     `gc_tri_count` (local triangle motif count), `gc_state`
     (`solid` / `pre` / `always_fragile`), `gc_ricci` (Ollivier-Ricci
     curvature, if available), `gc_ccrit` (critical coupling; empty for
     always-fragile edges).
-  - *Network summary*: a single row — `gc_fi` (fragility index = fraction of
+  - *Network summary*: a single row - `gc_fi` (fragility index = fraction of
     edges with no triangle), `gc_nodes`, `gc_edges`, `gc_triangles`,
     `gc_mean_ricci`, `gc_regime`, `gc_regime_tau`.
   - **C parameter** sets the coupling threshold used for edge classification.
@@ -46,7 +52,7 @@ the public API. There is no proprietary or server-side code here.
 - **KNIME Analytics Platform 5.12+**
 - An **API key** from <https://cognitive-engineering.dev> (Euleris keys start
   with `ek_`, GraphCoherence keys with `gc_`). No keys are stored in this
-  extension — you paste them into each node's dialog at run time.
+  extension - you paste them into each node's dialog at run time.
 - The nodes depend on the PyPI packages
   [`euleris`](https://pypi.org/project/euleris/) and
   [`graphcoherence`](https://pypi.org/project/graphcoherence/), plus `pandas`.
@@ -76,7 +82,7 @@ relevant column(s), and run. If you hit your daily quota the node fails with a
 ## Development setup
 
 For loading the nodes locally from source (before/instead of installing from the
-update site). Full walkthrough — env, smoke-test workflow, troubleshooting — is
+update site). Full walkthrough - env, smoke-test workflow, troubleshooting - is
 in [`LOCAL_TESTING.md`](LOCAL_TESTING.md). Quick version:
 
 ### Prerequisites
@@ -101,10 +107,10 @@ in [`LOCAL_TESTING.md`](LOCAL_TESTING.md). Quick version:
    -Dknime.python.extension.config=/absolute/path/to/dev/config.yml
    ```
 4. Restart KNIME. In dev mode the three nodes appear under **Uncategorized** in
-   the Node Repository — search "Euleris" / "GraphCoherence".
+   the Node Repository - search "Euleris" / "GraphCoherence".
 
 > **Note on node categories.** In local development mode, nodes appear under
-> "Uncategorized" — a KNIME 5.x limitation: dev-loaded Python extensions cannot
+> "Uncategorized" - a KNIME 5.x limitation: dev-loaded Python extensions cannot
 > create categories dynamically. When published through the KNIME Community
 > Extensions program, nodes appear under their designated categories.
 
@@ -120,12 +126,12 @@ runtime or the live API (fake result objects stand in for the API responses).
 
 ## Architecture
 
-- `src/*/_logic.py` — pure pandas transforms, **no** `import knime`; fully
+- `src/*/_logic.py` - pure pandas transforms, **no** `import knime`; fully
   unit-tested.
-- `src/*/nodes.py` — thin `knime.extension` node classes that wire config →
+- `src/*/nodes.py` - thin `knime.extension` node classes that wire config →
   pure logic (injecting `euleris.analyze` / `euleris.batch` / `gc.preview`) →
   `knext.Table`.
-- `src/cognitive_engineering_knime.py` — aggregator module that imports both node
+- `src/cognitive_engineering_knime.py` - aggregator module that imports both node
   packages so a single extension registers all three nodes.
 
 ## Publishing to the KNIME Community Hub
@@ -135,9 +141,9 @@ To bundle the extension into an installable update site and distribute it, see
 
 ## Related packages
 
-- [`euleris`](https://pypi.org/project/euleris/) — Python client for the Euleris
+- [`euleris`](https://pypi.org/project/euleris/) - Python client for the Euleris
   topological molecular analysis API.
-- [`graphcoherence`](https://pypi.org/project/graphcoherence/) — Python client for
+- [`graphcoherence`](https://pypi.org/project/graphcoherence/) - Python client for
   the GraphCoherence structural network analysis API.
 
 ## License
