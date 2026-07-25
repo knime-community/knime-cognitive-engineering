@@ -12,8 +12,13 @@ import logging
 import knime.extension as knext
 
 from ._logic import (
+    BOND_FRAGILITY_COLUMNS,
+    DEGRADATION_COLUMNS,
     EULERIS_BATCH_COLUMNS,
     EULERIS_OUTPUT_COLUMNS,
+    REAGENT_COLUMN,
+    build_reactivity_tables,
+    call_reactivity,
     enrich_batch,
     enrich_spectrum,
 )
@@ -31,7 +36,15 @@ _KTYPES = {
     "int": knext.int64(),
     "float": knext.double(),
     "str": knext.string(),
+    "bool": knext.bool_(),
 }
+
+
+def _schema_from(columns):
+    """Build a standalone knext schema from (name, dtype) pairs."""
+    return knext.Schema(
+        [_KTYPES[dtype] for _, dtype in columns], [name for name, _ in columns]
+    )
 
 
 def _append_columns(schema, columns):
@@ -59,7 +72,7 @@ def _is_rate_limit(exc):
     description="Input table with appended Euleris spectrum, ADME and toxicity columns.",
 )
 class EulerisSpectrumNode:
-    """Euleris Spectrum — topological molecular analysis.
+    """Euleris Spectrum - topological molecular analysis.
 
     Computes the cycle spectrum (N3..N10), a topological complexity score,
     ADME predictions (logP, ESOL, BBBP) and toxicity risk for each molecule
@@ -115,7 +128,7 @@ class EulerisSpectrumNode:
     description="Input table with appended Euleris spectrum and toxicity columns (batch mode).",
 )
 class EulerisBatchNode:
-    """Euleris Batch — high-throughput topological molecular analysis.
+    """Euleris Batch - high-throughput topological molecular analysis.
 
     Enriches a large SMILES table using the Euleris batch endpoint, sending
     molecules in chunks. Appends the cycle spectrum (N3..N10), the complexity
@@ -165,3 +178,83 @@ class EulerisBatchNode:
             raise
 
         return knext.Table.from_pandas(result)
+
+
+@knext.node(
+    name="Euleris Reactivity",
+    node_type=knext.NodeType.MANIPULATOR,
+    icon_path="icons/euleris.png",
+)
+@knext.input_table(name="Input Table", description="Table with a SMILES column.")
+@knext.output_table(
+    name="Bond Fragility",
+    description="One row per bond: always-fragile or solid, phi, delta-lambda2.",
+)
+@knext.output_table(
+    name="Degradation Network",
+    description="One row per fragment produced by breaking each bond in turn.",
+)
+class EulerisReactivityNode:
+    """Euleris Reactivity - bond fragility and degradation analysis.
+
+    Classifies every bond of every input molecule as always-fragile (it lies
+    on no cycle, so breaking it has no topological bypass) or solid, then
+    breaks each bond in turn and reports the resulting fragments with their
+    topological score.
+
+    Supplying a reagent SMILES also marks which bonds that reagent is
+    predicted to attack. Matching is ORD-backed where the reagent is known
+    and falls back to a structural heuristic otherwise; the confidence of
+    that call is visible in the Euleris web app. Analysis runs server-side
+    via the live Euleris API.
+    """
+
+    smiles_column = knext.ColumnParameter(
+        label="SMILES column",
+        description="Column holding the molecule SMILES strings.",
+        port_index=0,
+    )
+    api_key = knext.StringParameter(
+        label="API Key",
+        description="Your Euleris API key (starts with ek_).",
+        default_value="",
+    )
+    reagent_smiles = knext.StringParameter(
+        label="Reagent SMILES",
+        description=(
+            "Optional. A reagent SMILES, or UV for photolysis. Leave empty for "
+            "fragility and degradation only."
+        ),
+        default_value="",
+    )
+
+    def configure(self, config_context, input_schema):
+        bond_columns = list(BOND_FRAGILITY_COLUMNS)
+        if self.reagent_smiles.strip():
+            bond_columns.append(REAGENT_COLUMN)
+        return _schema_from(bond_columns), _schema_from(DEGRADATION_COLUMNS)
+
+    def execute(self, exec_context, input_table):
+        df = input_table.to_pandas()
+        reagent = self.reagent_smiles.strip() or None
+        api_key = self.api_key
+
+        try:
+            bonds, degradation = build_reactivity_tables(
+                df,
+                self.smiles_column,
+                lambda smiles, reagent_smiles: call_reactivity(
+                    smiles, api_key, reagent_smiles
+                ),
+                reagent_smiles=reagent,
+                progress_cb=lambda i, n: exec_context.set_progress(i / n if n else 1.0),
+                warn_cb=lambda m: LOGGER.warning(m),
+            )
+        except Exception as exc:  # noqa: BLE001
+            if _is_rate_limit(exc):
+                raise RuntimeError(
+                    f"Euleris daily limit reached. {exc} Upgrade at {UPGRADE_URL}"
+                ) from exc
+            raise
+
+        return knext.Table.from_pandas(bonds), knext.Table.from_pandas(degradation)

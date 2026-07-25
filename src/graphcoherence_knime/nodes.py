@@ -64,7 +64,7 @@ def _is_rate_limit(exc):
     description="Single-row network summary: fragility index, node/edge/triangle counts, Ricci regime.",
 )
 class GraphCoherenceAnalyzerNode:
-    """GraphCoherence Analyzer — structural network analysis.
+    """GraphCoherence Analyzer - structural network analysis.
 
     Classifies every edge of a network by its local triangle motif count and
     stability state (solid / pre / always-fragile), optionally with Ollivier-

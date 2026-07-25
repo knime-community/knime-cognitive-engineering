@@ -2,7 +2,7 @@
 channels = ["knime", "conda-forge"]
 name = "cognitive-engineering-knime"
 platforms = ["win-64", "linux-64", "osx-64", "osx-arm64"]
-version = "0.1.0"
+version = "0.2.0"
 
 [dependencies]
 python = "3.11.*"
@@ -11,7 +11,7 @@ knime-python-base = ">=5.11,<5.12"
 pandas = "*"
 
 [pypi-dependencies]
-euleris = ">=0.1.0"
+euleris = ">=0.2.0"
 graphcoherence = ">=0.1.0"
 
 [feature.build.dependencies]

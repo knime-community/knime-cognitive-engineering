@@ -1,6 +1,6 @@
 """Pure data logic for the Euleris KNIME nodes.
 
-This module contains NO ``import knime`` — every function here is a plain
+This module contains NO ``import knime`` - every function here is a plain
 pandas transformation so it can be unit-tested without a KNIME runtime.
 The node classes in ``nodes.py`` inject the live API callables
 (``euleris.analyze`` / ``euleris.batch``) and progress/warn callbacks.
@@ -44,6 +44,15 @@ EULERIS_OUTPUT_COLUMNS = [
     ("euleris_tox_AhR", "float"),
     ("euleris_tox_ER_LBD", "float"),
     ("euleris_tox_MMP", "float"),
+    # V1.4 structural descriptors. rho and its companions are null for
+    # molecules outside the 4 to 60 heavy-atom range where rho is computed,
+    # and arrive as missing values in KNIME.
+    ("euleris_N6_m", "float"),
+    ("euleris_phi", "float"),
+    ("euleris_rho_lq", "float"),
+    ("euleris_rho_pvalue", "float"),
+    ("euleris_lambda2", "float"),
+    ("euleris_q1", "float"),
 ]
 
 # Subset emitted by the batch node.
@@ -116,6 +125,23 @@ def _molecule_to_row(result) -> dict:
         row["euleris_tox_risk"] = pd.NA
         for col in _TOX_ENDPOINTS.values():
             row[col] = pd.NA
+
+    # V1.4 descriptors. Absent on a pre-V1.4 API, and `spectral` is None for
+    # molecules outside the size range where rho is computed; both become NA.
+    density = getattr(result, "spectrum_density", None) or {}
+    row["euleris_N6_m"] = density.get("N6_m", pd.NA)
+    phi = getattr(result, "phi", None)
+    row["euleris_phi"] = pd.NA if phi is None else phi
+
+    spectral = getattr(result, "spectral", None)
+    for col, attr in (
+        ("euleris_rho_lq", "rho_lq"),
+        ("euleris_rho_pvalue", "rho_lq_pvalue"),
+        ("euleris_lambda2", "lambda2"),
+        ("euleris_q1", "q1"),
+    ):
+        value = getattr(spectral, attr, None) if spectral is not None else None
+        row[col] = pd.NA if value is None else value
 
     return row
 
@@ -219,3 +245,164 @@ def enrich_batch(df, smiles_col, batch_fn, batch_size=100, progress_cb=None):
     rows = [by_smiles.get(s, _empty_batch_row()) for s in smiles_list]
     new_cols = pd.DataFrame(rows, index=df.index, columns=[c for c, _ in EULERIS_BATCH_COLUMNS])
     return pd.concat([df, new_cols], axis=1)
+
+
+# ─── V2.0: reactivity (bond fragility + degradation network) ───
+
+# Output port 1: one row per bond per input molecule.
+BOND_FRAGILITY_COLUMNS = [
+    ("input_smiles", "str"),
+    ("bond_idx", "int"),
+    ("atom_i", "int"),
+    ("atom_j", "int"),
+    ("symbol_i", "str"),
+    ("symbol_j", "str"),
+    ("bond_type", "str"),
+    ("status", "str"),
+    ("phi", "float"),
+    ("delta_lambda2", "float"),
+    ("is_bridge", "bool"),
+]
+
+# Appended to port 1 only when a reagent was supplied.
+REAGENT_COLUMN = ("reagent_targeted", "bool")
+
+# Output port 2: one row per FRAGMENT. A fragmentation that cuts a bridge
+# yields two fragments, and the fragment_smiles / fragment_score columns are
+# single-valued, so one row per fragment is the only faithful shape. Rows for
+# the same cut share a bond_idx.
+DEGRADATION_COLUMNS = [
+    ("input_smiles", "str"),
+    ("bond_idx", "int"),
+    ("bond_atoms", "str"),
+    ("is_af", "bool"),
+    ("fragment_smiles", "str"),
+    ("fragment_score", "int"),
+    ("delta_score", "int"),
+    ("breaks_ring", "bool"),
+]
+
+
+def call_reactivity(smiles, api_key, reagent_smiles=None):
+    """Call the reactivity endpoint through the euleris pip package.
+
+    Imported locally so this module stays importable without euleris
+    installed, which is what lets the tests run outside a KNIME environment.
+    """
+    import euleris
+
+    euleris.configure(api_key=api_key)
+    return euleris.reactivity(smiles, reagent_smiles)
+
+
+def _bond_rows(smiles, result, with_reagent):
+    """Port 1 rows for one molecule."""
+    targeted = set()
+    match = getattr(result, "reagent_match", None)
+    if match is not None:
+        targeted = set(getattr(match, "bonds_targeted", None) or [])
+
+    rows = []
+    for bond in getattr(result, "bonds", None) or []:
+        atoms = getattr(bond, "atoms", None) or []
+        symbols = getattr(bond, "symbols", None) or []
+        row = {
+            "input_smiles": smiles,
+            "bond_idx": getattr(bond, "bond_idx", pd.NA),
+            "atom_i": atoms[0] if len(atoms) > 0 else pd.NA,
+            "atom_j": atoms[1] if len(atoms) > 1 else pd.NA,
+            "symbol_i": symbols[0] if len(symbols) > 0 else pd.NA,
+            "symbol_j": symbols[1] if len(symbols) > 1 else pd.NA,
+            "bond_type": getattr(bond, "bond_type", pd.NA),
+            # A bond on no cycle is always-fragile: nothing routes around it.
+            "status": "AF" if getattr(bond, "is_af", False) else "SOLID",
+            "phi": getattr(bond, "phi", pd.NA),
+            "delta_lambda2": getattr(bond, "delta_lambda2", pd.NA),
+            "is_bridge": getattr(bond, "is_bridge", pd.NA),
+        }
+        if with_reagent:
+            row[REAGENT_COLUMN[0]] = getattr(bond, "bond_idx", None) in targeted
+        rows.append(row)
+    return rows
+
+
+def _degradation_rows(smiles, result):
+    """Port 2 rows for one molecule, one per fragment."""
+    rows = []
+    for frag in getattr(result, "degradation", None) or []:
+        fragments = getattr(frag, "fragments", None) or []
+        common = {
+            "input_smiles": smiles,
+            "bond_idx": getattr(frag, "bond_idx", pd.NA),
+            "bond_atoms": getattr(frag, "bond_atoms", pd.NA),
+            "is_af": getattr(frag, "is_af", pd.NA),
+            "delta_score": getattr(frag, "delta_score", pd.NA),
+            "breaks_ring": getattr(frag, "breaks_ring", pd.NA),
+        }
+        if not fragments:
+            # RDKit refused to sanitize the pieces; keep the cut on the record.
+            rows.append({**common, "fragment_smiles": pd.NA, "fragment_score": pd.NA})
+            continue
+        for piece in fragments:
+            rows.append(
+                {
+                    **common,
+                    "fragment_smiles": getattr(piece, "smiles", pd.NA),
+                    "fragment_score": getattr(piece, "score", pd.NA),
+                }
+            )
+    return rows
+
+
+def build_reactivity_tables(
+    df,
+    smiles_col,
+    reactivity_fn,
+    reagent_smiles=None,
+    progress_cb=None,
+    warn_cb=None,
+):
+    """Run reactivity over a SMILES column and build both output tables.
+
+    Returns ``(bond_fragility_df, degradation_df)``. A row whose SMILES fails
+    is skipped with a warning and contributes no rows to either table, so an
+    invalid molecule never produces misleading bond data. A rate-limit error
+    is re-raised immediately: retrying the remaining rows would only burn
+    quota.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+    smiles_col : str
+    reactivity_fn : callable(smiles, reagent_smiles) -> ReactivityResult
+    reagent_smiles : str or None
+    progress_cb : callable(i, n), optional
+    warn_cb : callable(str), optional
+    """
+    with_reagent = bool(reagent_smiles)
+    bond_columns = [c for c, _ in BOND_FRAGILITY_COLUMNS]
+    if with_reagent:
+        bond_columns = bond_columns + [REAGENT_COLUMN[0]]
+
+    smiles_list = df[smiles_col].tolist()
+    n = len(smiles_list)
+    bond_rows, degradation_rows = [], []
+
+    for i, smiles in enumerate(smiles_list):
+        try:
+            result = reactivity_fn(smiles, reagent_smiles)
+            bond_rows.extend(_bond_rows(smiles, result, with_reagent))
+            degradation_rows.extend(_degradation_rows(smiles, result))
+        except Exception as exc:  # noqa: BLE001
+            if _is_rate_limit(exc):
+                raise
+            if warn_cb is not None:
+                warn_cb(f"Euleris reactivity failed for '{smiles}': {exc}")
+        if progress_cb is not None:
+            progress_cb(i + 1, n)
+
+    bonds = pd.DataFrame(bond_rows, columns=bond_columns)
+    degradation = pd.DataFrame(
+        degradation_rows, columns=[c for c, _ in DEGRADATION_COLUMNS]
+    )
+    return bonds, degradation
