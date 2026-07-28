@@ -5,9 +5,10 @@ platforms = ["win-64", "linux-64", "osx-64", "osx-arm64"]
 version = "0.1.0"
 
 [dependencies]
-python = "3.11.*"
-knime-extension = ">=5.11,<5.12"
-knime-python-base = ">=5.11,<5.12"
+python = "3.13.*"
+knime-extension = "*"
+knime-python-base = "*"
+knime-python-versions = "5.12.*"
 pandas = "*"
 
 [pypi-dependencies]
@@ -15,8 +16,12 @@ euleris = ">=0.1.0"
 graphcoherence = ">=0.1.0"
 
 [feature.build.dependencies]
-python = "3.11.*"
-knime-extension-bundling = ">=5.11,<5.12"
+python = "3.13.*"
+knime-extension-bundling = ">=5.12,<5.13"
+pixi-pack = ">=0.7.7"
+
+[feature.build.tasks]
+build = { args = [{ "arg" = "dest", "default" = "../dist" }, { "arg" = "update_sites_version", "default" = "nightly" }], cmd = "build-python-extension . {{ dest }} --update-sites-version {{ update_sites_version }}" }
 
 [environments]
 build = { features = ["build"], no-default-feature = true }
