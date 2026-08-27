@@ -26,12 +26,47 @@ the public API. There is no proprietary or server-side code here.
   the total cycle count `euleris_cycles`, ADME predictions `euleris_logP`,
   `euleris_esol`, `euleris_bbbp`, and toxicity `euleris_tox_score`,
   `euleris_tox_risk`, `euleris_tox_AhR`, `euleris_tox_ER_LBD`, `euleris_tox_MMP`.
+  Since v0.2.0 it also appends the structural descriptors `euleris_N6_m`
+  (aromatic density), `euleris_phi` (fraction of bonds on at least one cycle),
+  `euleris_rho_lq` with `euleris_rho_pvalue`, `euleris_lambda2` and
+  `euleris_q1`. The rho columns are missing values for molecules outside the
+  4 to 60 heavy-atom range, where the correlation is not computed.
   Invalid SMILES do not stop the run - the offending row's new columns are left
   empty (missing) and a warning is logged.
 - **Euleris Batch** - high-throughput variant that sends molecules to the batch
   endpoint in configurable chunks (**Batch Size**, 1-1000) and appends the
   spectrum, `euleris_score`, and toxicity summary columns. Results are aligned
   back to the input rows by SMILES; molecules the API rejects are left empty.
+
+- **Euleris Reactivity** (new in v0.2.0) - bond-level fragility analysis. For
+  every bond of every input molecule it reports whether the bond is
+  always-fragile (it lies on no cycle, so breaking it has no topological
+  bypass) or solid, along with `phi` (the share of the molecule's cycles
+  running through the bond) and `delta_lambda2` (the algebraic connectivity
+  lost if it breaks).
+
+  The node has **two output ports**:
+
+  1. **Bond Fragility** - one row per bond: `input_smiles`, `bond_idx`,
+     `atom_i`, `atom_j`, `symbol_i`, `symbol_j`, `bond_type`, `status`
+     (AF or SOLID), `phi`, `delta_lambda2`, `is_bridge`.
+  2. **Degradation Network** - one row per fragment produced by breaking each
+     bond in turn: `input_smiles`, `bond_idx`, `bond_atoms`, `is_af`,
+     `fragment_smiles`, `fragment_score`, `delta_score`, `breaks_ring`.
+     Breaking a ring bond opens the ring and yields one fragment; only cutting
+     a bridge splits the molecule in two, which is why one `bond_idx` can span
+     two rows.
+
+  Supplying an optional **Reagent SMILES** (or the literal `UV` for photolysis)
+  adds a `reagent_targeted` column to the first port, marking the bonds that
+  reagent is predicted to attack. Reagent matching is ORD-backed where the
+  reagent is known to the server and falls back to a structural heuristic
+  otherwise. The heuristic is a structural hypothesis, not a chemical
+  prediction: the Euleris web app shows which of the two produced a given
+  answer, and with what confidence.
+
+  A molecule whose SMILES fails to parse is skipped with a warning and
+  contributes no rows to either port.
 
 ### GraphCoherence
 
@@ -67,7 +102,7 @@ Install from the Cognitive Engineering update site:
    https://knime.cognitive-engineering.dev
    ```
 2. **File → Install KNIME Extensions…**, find the *Cognitive Engineering* nodes
-   (Euleris Spectrum, Euleris Batch, GraphCoherence Analyzer), install, and
+   (Euleris Spectrum, Euleris Batch, Euleris Reactivity, GraphCoherence Analyzer), install, and
    restart KNIME.
 
 Then, in each node's dialog, paste your API key into **API Key**, select the

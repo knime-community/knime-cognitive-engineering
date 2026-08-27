@@ -1,4 +1,4 @@
-# Extension manifest — single extension aggregating both node modules.
+# Extension manifest - single extension aggregating both node modules.
 #
 # KNIME's pure-Python loader requires ONE extension per knime.yml with a single
 # `extension_module`. The aggregator module below imports both node packages so a
@@ -10,7 +10,7 @@ name: cognitive_engineering
 author: "David Martin Venti"
 extension_module: cognitive_engineering_knime
 group_id: dev.cognitive_engineering
-version: 0.1.0
+version: 0.2.0
 description: "Topological molecular & network analysis (Euleris + GraphCoherence)"
 vendor: "Cognitive Engineering"
 pixi_toml_path: ./pixi.toml
