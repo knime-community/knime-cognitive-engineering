@@ -6,8 +6,8 @@ version = "0.2.0"
 
 [dependencies]
 python = "3.13.*"
-knime-extension = "5.12.*"
-knime-python-versions = "5.12.*"
+knime-extension = "5.13.*"
+knime-python-versions = "5.13.*"
 pandas = "*"
 
 [pypi-dependencies]
@@ -16,7 +16,7 @@ graphcoherence = ">=0.1.0"
 
 [feature.build.dependencies]
 python = "3.13.*"
-knime-extension-bundling = "5.12.*"
+knime-extension-bundling = "6.1.*"
 
 [feature.build.tasks]
 build = { args = [
